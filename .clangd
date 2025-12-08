@@ -1,0 +1,8 @@
+CompileFlags:
+  Add: 
+    - -std=c++23
+    - --target=x86_64-pc-windows-msvc
+    - -fms-compatibility
+    - -fms-compatibility-version=19.50
+    - -Ic:/Users/keith/.gemini/antigravity/playground/quantum-rosette/lib
+    - -Ic:/Users/keith/.gemini/antigravity/playground/quantum-rosette/include

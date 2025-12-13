@@ -24,15 +24,29 @@ Maintain a clear separation between source C++, build artifacts, and Unity asset
 
 ### Build Pipeline
 
-#### A. Emscripten Setup (Local)
-Avoid system-wide Emscripten installs to prevent version conflicts. Install a specific version compatible with your Unity version (check `Editor/Data/PlaybackEngines/WebGLSupport/BuildTools/Emscripten/emscripten-version.txt`).
+#### Prerequisites
+*   **Visual Studio 2022 (or newer)**: Required for the Windows build (`build.bat`). This guide assumes Visual Studio is installed with the "Desktop development with C++" workload.
+*   **Emscripten SDK**: Required for the WebGL build (`build_wasm.bat`).
 
-1.  Clone `emsdk` into `tools/`.
-2.  Install & Activate:
+#### A. Emscripten Setup (Local)
+**CRITICAL: First-Time Setup / Fresh Clone**
+Even if the `tools/emsdk` folder exists, the Emscripten SDK Environment variables and binaries are **NOT** portable. You **MUST** run the following steps on every new machine or fresh clone.
+
+*Failure to do this will result in: `'em++' is not recognized` errors when building.*
+
+1.  **Ensure `emsdk` is present**:
+    If `tools/emsdk` is missing or empty, clone it:
     ```bash
+    git clone https://github.com/emscripten-core/emsdk.git tools/emsdk
+    ```
+
+2.  **Install & Activate (Required on every machine)**:
+    This downloads the compiler binaries and generates the `.emscripten` config file.
+    ```batch
     cd tools/emsdk
-    ./emsdk install 3.1.39  # Match Unity version!
-    ./emsdk activate 3.1.39
+    REM Match Unity version!
+    emsdk.bat install 3.1.39
+    emsdk.bat activate 3.1.39
     ```
 
 #### B. Build Script (`build_wasm.bat`)
@@ -45,16 +59,67 @@ We use a two-step process: **Compile** -> **Archive**.
     *   `-O3`: Release optimization.
     *   `-s WASM=1`: Output WebAssembly.
     *   `-c`: Compile to Object file (`.o`).
-    *   `-std=c++20` (or 17): Modern C++ support.
+    *   `-std=c++20`: Modern C++ support.
 3.  **Archive (`emar`)**:
     *   `rcs`: Create/replace archive index.
     *   Output: `build/quantum-rosette.a` (Static Library).
 
-**Example Script:**
+**Script Content:**
 ```batch
+@echo off
 call "tools\emsdk\emsdk_env.bat"
-em++ -O3 -s WASM=1 -c -o build/plugin.o src/plugin.cpp -Iinclude -Ilib -std=c++20
-emar rcs build/quantum-rosette.a build/plugin.o
+
+if not exist build mkdir build
+
+echo Building quantum-rosette.a (WebGL Static Library)...
+@REM -O3: Release optimization
+@REM -r: Generate a relocatable object (archive/static lib equivalent for Emscripten)
+@REM -s WASM=1: Target WebAssembly (standard)
+@REM -I...: Include paths
+@REM -std=c++20: Language standard
+@REM Compile to object file first
+call em++ -O3 -s WASM=1 -c -o build/plugin.o src/plugin.cpp -Iinclude -Ilib -std=c++20
+
+if %ERRORLEVEL% NEQ 0 (
+    echo Compilation failed.
+    exit /b 1
+)
+
+echo Archiving to quantum-rosette.a...
+call emar rcs build/quantum-rosette.a build/plugin.o
+
+if %ERRORLEVEL% NEQ 0 (
+    echo Build failed.
+    exit /b 1
+)
+
+echo Build success.
+```
+
+#### C. Windows Build Script (`build.bat`)
+For local testing in the Unity Editor (Windows), we build a standard DLL using MSVC (`cl.exe`).
+
+**Script Content:**
+```batch
+@echo off
+@REM Adjust this path to match your Visual Studio version (e.g., 2022/Community)
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+
+if %ERRORLEVEL% NEQ 0 (
+    echo Error: Could not setup x64 environment.
+    exit /b 1
+)
+
+if not exist build mkdir build
+
+echo Building quantum-rosette.dll (x64)...
+cl.exe /std:c++latest /EHsc /LD /Iinclude /Ilib /Fobuild\ /Febuild\quantum-rosette.dll src\*.cpp
+if %ERRORLEVEL% NEQ 0 (
+    echo Build failed.
+    exit /b 1
+)
+
+echo Build success.
 ```
 
 ---

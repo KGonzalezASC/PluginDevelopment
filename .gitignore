@@ -1,0 +1,27 @@
+# Build artifacts
+build/
+*.dll
+*.exe
+*.obj
+*.lib
+*.exp
+*.pdb
+*.ilk
+
+# VS Code
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Visual Studio / Editors
+.vs/
+.clangd/
+*.user
+
+# System
+Thumbs.db
+Desktop.ini
+
+temp_ggpo/
+tools/

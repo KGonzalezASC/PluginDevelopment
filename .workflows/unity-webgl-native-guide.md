@@ -1,203 +1,483 @@
-# Unity WebGL Native Plugin (Zero-GC / High-Performance) Guide
+# Unity WebGL Native Plugin Setup Guide
 
-This guide documents the workflow, architecture, and design patterns for building high-performance native C++ plugins for Unity, with a specific focus on **WebGL (WebAssembly)** support using Emscripten.
+> **Purpose**: This guide enables an AI agent or developer to set up a complete Unity WebGL native C++ plugin project from scratch on a fresh Windows machine. Follow steps sequentially.
 
 ---
 
-## 1. Project Structure & Build Pipeline
+## Quick Reference
 
-### Folder Setup
-Maintain a clear separation between source C++, build artifacts, and Unity assets.
+| Output | File | Platform |
+|--------|------|----------|
+| Static Library | `build/<plugin-name>.a` | WebGL |
+| Dynamic Library | `build/<plugin-name>.dll` | Windows Editor |
 
-```text
-/root
-  ├── src/                    # C++ Source Code (.cpp, .h)
-  ├── include/                # Private headers for plugin logic
-  ├── lib/                    # Third-party header-only libraries (e.g., ankerl::unordered_dense)
-  ├── unity/                  # Unity Project (Assets, ProjectSettings, etc.)
-  ├── tools/
-  │   └── emsdk/              # Local Emscripten SDK installation
-  ├── build/                  # Intermediate build artifacts (.o, .obj)
-  ├── build.bat               # Windows (MSVC) Build Script
-  └── build_wasm.bat          # WebGL (Emscripten) Build Script
+---
+
+## Prerequisites
+
+Before starting, verify these are installed:
+
+```powershell
+# Check Git
+git --version
+# Expected: git version 2.x.x
+
+# Check Python  
+python --version
+# Expected: Python 3.10+ (3.12+ recommended)
+
+# Check Visual Studio (for Windows DLL builds)
+# Must have "Desktop development with C++" workload installed
 ```
 
-### Build Pipeline
+---
 
-#### Prerequisites
-*   **Visual Studio 2022 (or newer)**: Required for the Windows build (`build.bat`). This guide assumes Visual Studio is installed with the "Desktop development with C++" workload.
-*   **Emscripten SDK**: Required for the WebGL build (`build_wasm.bat`).
+## Step 1: Create Project Structure
 
-#### A. Emscripten Setup (Local)
-**CRITICAL: First-Time Setup / Fresh Clone**
-Even if the `tools/emsdk` folder exists, the Emscripten SDK Environment variables and binaries are **NOT** portable. You **MUST** run the following steps on every new machine or fresh clone.
+Create these directories and files:
 
-*Failure to do this will result in: `'em++' is not recognized` errors when building.*
+```
+<project-root>/
+├── src/                          # C++ source files
+│   └── plugin.cpp
+├── include/                      # Private headers (can be empty)
+├── lib/                          # Third-party header-only libs (can be empty)  
+├── tools/
+│   └── emsdk/                    # Emscripten SDK (created in Step 2)
+├── unity/
+│   └── Assets/
+│       ├── Plugins/              # Built .a and .dll go here
+│       └── Scripts/              # C# test scripts
+├── build/                        # Build artifacts (auto-created)
+├── .gitignore
+├── .clangd                       # Clangd linter config
+├── .vscode/
+│   └── tasks.json                # VS Code build tasks
+├── build.bat                     # Windows DLL build
+└── build_wasm.bat                # WebGL .a build
+```
 
-1.  **Ensure `emsdk` is present**:
-    If `tools/emsdk` is missing or empty, clone it:
-    ```bash
-    git clone https://github.com/emscripten-core/emsdk.git tools/emsdk
-    ```
+### 1.1 Create `.gitignore`
 
-2.  **Install & Activate (Required on every machine)**:
-    This downloads the compiler binaries and generates the `.emscripten` config file.
-    ```batch
-    cd tools/emsdk
-    REM Match Unity version!
-    emsdk.bat install 3.1.39
-    emsdk.bat activate 3.1.39
-    ```
+```gitignore
+# Build artifacts
+build/
+*.dll
+*.exe
+*.obj
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.a
+*.o
 
-#### B. Build Script (`build_wasm.bat`)
-We use a two-step process: **Compile** -> **Archive**.
-*Do NOT use `em++ -r` directly as it may produce an object format Unity's linker rejects.*
+# Emscripten SDK (CRITICAL - prevents file locking during install)
+tools/emsdk/
 
-**Key Steps:**
-1.  **Environment**: Call `emsdk_env.bat` to set path.
-2.  **Compile (`em++`)**:
-    *   `-O3`: Release optimization.
-    *   `-s WASM=1`: Output WebAssembly.
-    *   `-c`: Compile to Object file (`.o`).
-    *   `-std=c++20`: Modern C++ support.
-3.  **Archive (`emar`)**:
-    *   `rcs`: Create/replace archive index.
-    *   Output: `build/quantum-rosette.a` (Static Library).
+# Unity
+unity/Library/
+unity/Logs/
+unity/Temp/
+unity/obj/
+*.csproj
+*.sln
 
-**Script Content:**
+# Editors
+.vs/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.clangd/
+*.user
+
+# System
+Thumbs.db
+Desktop.ini
+.DS_Store
+```
+
+### 1.2 Create `.clangd` (Clangd IntelliSense config)
+
+```yaml
+CompileFlags:
+  Add: 
+    - -std=c++20
+    - --target=x86_64-pc-windows-msvc
+    - -fms-compatibility
+    - -I./lib
+    - -I./include
+```
+
+### 1.3 Create `.vscode/tasks.json` (VS Code build integration)
+
+```json
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Windows (DLL)",
+            "type": "shell",
+            "command": ".\\build.bat",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$msCompile"]
+        },
+        {
+            "label": "Build WebGL (.a)",
+            "type": "shell",
+            "command": ".\\build_wasm.bat",
+            "group": "build",
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}
+```
+
+> **Usage**: Press `Ctrl+Shift+B` in VS Code to run the default build task (Windows DLL).
+
+### 1.4 Create `src/plugin.cpp`
+
+```cpp
+#include <cstdint>
+
+#ifdef _WIN32
+#define PLUGIN_API __declspec(dllexport)
+#else
+#define PLUGIN_API __attribute__((visibility("default")))
+#endif
+
+extern "C" {
+PLUGIN_API void InitializePlugin() {}
+
+PLUGIN_API int AddNumbers(int a, int b) { return a + b; }
+}
+```
+
+---
+
+## Step 2: Install Emscripten SDK
+
+> **CRITICAL**: This step must be run on EVERY new machine or fresh clone. The SDK is NOT portable.
+
+### 2.1 Clone the SDK
+
+```powershell
+cd <project-root>
+git clone https://github.com/emscripten-core/emsdk.git tools/emsdk
+```
+
+### 2.2 Install Emscripten
+
+```powershell
+cd tools/emsdk
+
+# Use Python directly (more reliable than emsdk.bat on Windows)
+python emsdk.py install 3.1.39
+
+# Wait for download and extraction to complete (may take 5-10 minutes)
+```
+
+**Version Guidance:**
+| Unity Version | Recommended Emscripten |
+|---------------|------------------------|
+| Unity 2022.2+ | 3.1.8 or 3.1.39 |
+| Unity 6 (2024) | 3.1.38 |
+| General/Latest | 3.1.39+ |
+
+### 2.3 Activate (May Fail - See 2.4)
+
+```powershell
+python emsdk.py activate 3.1.39
+```
+
+### 2.4 Create Manual Config (REQUIRED if activation fails)
+
+If `em++` is not recognized after activation, create the config file manually:
+
+**File**: `tools/emsdk/upstream/emscripten/.emscripten`
+
+```python
+import os
+emsdk_path = 'C:/path/to/your/project/tools/emsdk'  # <-- UPDATE THIS TO YOUR ABSOLUTE PATH
+LLVM_ROOT = emsdk_path + '/upstream/bin'
+BINARYEN_ROOT = emsdk_path + '/upstream'
+EMSCRIPTEN_ROOT = emsdk_path + '/upstream/emscripten'
+NODE_JS = emsdk_path + '/node/22.16.0_64bit/bin/node.exe'
+TEMP_DIR = emsdk_path + '/tmp'
+```
+
+**PowerShell command to create it** (update the path!):
+```powershell
+$emsdk_path = "C:/Users/YourName/Projects/your-project/tools/emsdk"
+$content = @"
+import os
+emsdk_path = '$emsdk_path'
+LLVM_ROOT = emsdk_path + '/upstream/bin'
+BINARYEN_ROOT = emsdk_path + '/upstream'
+EMSCRIPTEN_ROOT = emsdk_path + '/upstream/emscripten'
+NODE_JS = emsdk_path + '/node/22.16.0_64bit/bin/node.exe'
+TEMP_DIR = emsdk_path + '/tmp'
+"@
+[System.IO.File]::WriteAllText("$emsdk_path/upstream/emscripten/.emscripten", $content.Replace('\', '/'))
+```
+
+### 2.5 Verify Installation
+
+```powershell
+# Test em++ directly with full path
+& "tools\emsdk\upstream\emscripten\em++.bat" --version
+
+# Expected output: emcc (Emscripten gcc/clang-like replacement...) 3.1.39
+```
+
+---
+
+## Step 3: Create Build Scripts
+
+### 3.1 Create `build_wasm.bat` (WebGL Static Library)
+
+> **Key Design**: Uses explicit paths to bypass SDK activation issues.
+
 ```batch
 @echo off
-call "tools\emsdk\emsdk_env.bat"
+setlocal
+
+REM === Emscripten Paths (adjust node/python versions if different) ===
+set "EMSDK=%~dp0tools\emsdk"
+set "EMSDK_NODE=%EMSDK%\node\22.16.0_64bit\bin\node.exe"
+set "EMSDK_PYTHON=%EMSDK%\python\3.13.3_64bit\python.exe"
+set "EM_CONFIG=%EMSDK%\upstream\emscripten\.emscripten"
+set "EMSCRIPTEN=%EMSDK%\upstream\emscripten"
+set "PATH=%EMSCRIPTEN%;%EMSDK%\upstream\bin;%EMSDK%\node\22.16.0_64bit\bin;%EMSDK%\python\3.13.3_64bit;%PATH%"
 
 if not exist build mkdir build
 
-echo Building quantum-rosette.a (WebGL Static Library)...
-@REM -O3: Release optimization
-@REM -r: Generate a relocatable object (archive/static lib equivalent for Emscripten)
-@REM -s WASM=1: Target WebAssembly (standard)
-@REM -I...: Include paths
-@REM -std=c++20: Language standard
-@REM Compile to object file first
-call em++ -O3 -s WASM=1 -c -o build/plugin.o src/plugin.cpp -Iinclude -Ilib -std=c++20
+echo Building <plugin-name>.a (WebGL Static Library)...
+call "%EMSCRIPTEN%\em++.bat" -O3 -c -o build/plugin.o src/plugin.cpp -Iinclude -Ilib -std=c++20
 
 if %ERRORLEVEL% NEQ 0 (
     echo Compilation failed.
     exit /b 1
 )
 
-echo Archiving to quantum-rosette.a...
-call emar rcs build/quantum-rosette.a build/plugin.o
+echo Archiving...
+call "%EMSCRIPTEN%\emar.bat" rcs build/<plugin-name>.a build/plugin.o
 
 if %ERRORLEVEL% NEQ 0 (
-    echo Build failed.
+    echo Archive failed.
     exit /b 1
 )
 
-echo Build success.
+echo Build success: build/<plugin-name>.a
+endlocal
 ```
 
-#### C. Windows Build Script (`build.bat`)
-For local testing in the Unity Editor (Windows), we build a standard DLL using MSVC (`cl.exe`).
+**Replace `<plugin-name>` with your actual plugin name (e.g., `blind-fish`).**
 
-**Script Content:**
+### 3.2 Create `build.bat` (Windows DLL)
+
 ```batch
 @echo off
-@REM Adjust this path to match your Visual Studio version (e.g., 2022/Community)
+REM === Adjust path to your Visual Studio installation ===
+REM Common paths:
+REM   VS 2022: "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+REM   VS 2019: "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
+
 call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
 
 if %ERRORLEVEL% NEQ 0 (
-    echo Error: Could not setup x64 environment.
+    echo Error: Could not setup x64 environment. Check Visual Studio path.
     exit /b 1
 )
 
 if not exist build mkdir build
 
-echo Building quantum-rosette.dll (x64)...
-cl.exe /std:c++latest /EHsc /LD /Iinclude /Ilib /Fobuild\ /Febuild\quantum-rosette.dll src\*.cpp
+echo Building <plugin-name>.dll (x64)...
+cl.exe /std:c++latest /EHsc /LD /Iinclude /Ilib /Fobuild\ /Febuild\<plugin-name>.dll src\*.cpp
+
 if %ERRORLEVEL% NEQ 0 (
     echo Build failed.
     exit /b 1
 )
 
-echo Build success.
+echo Build success: build/<plugin-name>.dll
+```
+
+**Replace `<plugin-name>` with your actual plugin name.**
+
+---
+
+## Step 4: Build and Test
+
+### 4.1 Build WebGL Library
+
+```powershell
+cd <project-root>
+cmd /c "build_wasm.bat"
+# Expected: Build success: build/<plugin-name>.a
+```
+
+### 4.2 Build Windows DLL
+
+```powershell
+cmd /c "build.bat"
+# Expected: Build success: build/<plugin-name>.dll
+```
+
+### 4.3 Copy to Unity
+
+```powershell
+Copy-Item build\<plugin-name>.a unity\Assets\Plugins\
+Copy-Item build\<plugin-name>.dll unity\Assets\Plugins\
 ```
 
 ---
 
-## 2. C# Attributes & Optimization
+## Step 5: Create Unity Test Script
 
-We prioritize **Zero-GC (Garbage Collection)** usage.
-All marshalling errors on WebGL typically stem from using complex C# types (Delegates, Classes) in signatures. Use **primitive types only (IntPtr, int, float)**.
+**File**: `unity/Assets/Scripts/NativePluginTest.cs`
 
-| Attribute / Feature | Purpose | WebGL Nuance |
-| :--- | :--- | :--- |
-| **`[DllImport("__Internal")]`** | Required for WebGL static linking. | Use a preprocessor directive to switch between `__Internal` (WebGL) and `"MyPlugin.dll"` (Editor). |
-| **`[SuppressGCTransition]`** | Skips the "GC Safe Point" check when calling C++. | **Critical for speed**. Safe only if C++ function is fast and does not trigger GC callbacks. |
-| **`[UnmanagedCallersOnly]`** | Compiles a C# method as a raw C-function (no Delegate overhead). | Required for reverse callbacks (C++ -> C#). |
-| **`IntPtr` (in Signatures)** | Generic pointer type. | **Use this instead of `delegate*`** in `DllImport` signatures to avoid `MarshalDirectiveException` on WebGL. |
-| **`UnsafeUtility.Malloc`** | Raw unmanaged memory allocation. | **Zero GC pressure**. You MUST manually `Free` this memory. |
+```csharp
+using UnityEngine;
+using System.Runtime.InteropServices;
 
-### The "IntPtr" Pattern for Callbacks
-Unity WebGL's marshaller struggles with C# 9 `delegate*` syntax in imports.
-**Solution:**
-1.  Define C# import as taking `IntPtr`.
-2.  Cast your function pointer: `(IntPtr)(delegate* <int, void>)&MyStaticMethod`.
-3.  Pass `IntPtr` to C++.
+public class NativePluginTest : MonoBehaviour
+{
+    // For WebGL: "__Internal" (static linking)
+    // For Editor: "<plugin-name>" (loads .dll)
+#if UNITY_WEBGL && !UNITY_EDITOR
+    const string DLL_NAME = "__Internal";
+#else
+    const string DLL_NAME = "<plugin-name>";
+#endif
 
----
+    [DllImport(DLL_NAME)]
+    private static extern void InitializePlugin();
 
-## 3. C++ Design Rules (Emscripten Specifics)
+    [DllImport(DLL_NAME)]
+    private static extern int AddNumbers(int a, int b);
 
-### A. Lazy Initialization
-**Problem:** In WebGL (Static Linking), `UnityPluginLoad` is NOT guaranteed to run before your first script calls a function, or at all, depending on stripping/initialization order.
-**Solution:** Use a "Lazy Init" pattern for global state.
-
-```cpp
-// Inside plugin.cpp
-void EnsureState() {
-    if (!s_GlobalMap) {
-        s_GlobalMap = std::make_unique<MyMap>();
+    void Start()
+    {
+        Debug.Log("Initializing Plugin...");
+        InitializePlugin();
+        
+        int a = 5;
+        int b = 7;
+        int result = AddNumbers(a, b);
+        
+        Debug.Log($"AddNumbers({a}, {b}) = {result}");
+        
+        if (result == 12)
+            Debug.Log("<color=green>Test PASSED: Plugin working correctly.</color>");
+        else
+            Debug.LogError($"<color=red>Test FAILED: Expected 12, got {result}</color>");
     }
 }
+```
 
-// At start of EVERY exported function:
-extern "C" void MyExportedFunc() {
+**Replace `<plugin-name>` with your actual plugin name.**
+
+---
+
+## Step 6: Unity Configuration
+
+### 6.1 Plugin Import Settings
+
+After copying plugins to `Assets/Plugins/`:
+
+**For `.a` file (WebGL):**
+1. Select the `.a` file in Unity Project view
+2. In Inspector, uncheck **Any Platform**
+3. Check only **WebGL**
+4. Click **Apply**
+
+**For `.dll` file (Editor):**
+1. Select the `.dll` file in Unity Project view
+2. In Inspector, uncheck **Any Platform**  
+3. Check only **Editor** and **Standalone Windows x64**
+4. Click **Apply**
+
+### 6.2 Project Settings
+
+1. **Enable Unsafe Code**: `Edit > Project Settings > Player > Other Settings > Allow 'unsafe' Code` ✓
+2. **API Compatibility**: `.NET Standard 2.1` (recommended)
+
+### 6.3 WebGL Build Settings
+
+1. `Edit > Project Settings > Player > WebGL > Publishing Settings`
+2. **Enable Exceptions**: `None` (best performance) or `Explicitly Thrown Exceptions Only`
+3. **Compression Format**: `Brotli` or `Gzip`
+
+---
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `'em++' is not recognized` | SDK not activated | Create `.emscripten` manually (Step 2.4) |
+| `[WinError 32] Cannot access file` | File locked during install | Close VS Code, add `tools/emsdk/` to `.gitignore`, retry |
+| `DllNotFoundException` on WebGL | Wrong DllImport name | Use `"__Internal"` for WebGL builds |
+| `MarshalDirectiveException` | Using `delegate*` in signatures | Use `IntPtr` instead |
+| `NODE_JS not set in config` | Missing `.emscripten` file | Create it manually (Step 2.4) |
+| Build fails with linker errors | Used `em++ -r` | Use `em++ -c` then `emar rcs` |
+
+---
+
+## C++ Best Practices (Emscripten/WebGL)
+
+### Use Lazy Initialization
+`UnityPluginLoad` may not run before your code is called in WebGL.
+
+```cpp
+static std::unique_ptr<MyState> g_state;
+
+void EnsureState() {
+    if (!g_state) g_state = std::make_unique<MyState>();
+}
+
+extern "C" PLUGIN_API void MyFunction() {
     EnsureState();
-    // ... code ...
+    // ... use g_state ...
 }
 ```
 
-### B. Header-Only Libraries
-**Guideline:** Prefer header-only C++ libraries (e.g., `ankerl::unordered_dense`, `nlohmann::json`).
-**Reason:** Adding strict compile/link steps for third-party `.lib` or `.a` files in Emscripten is painful and error-prone (symbol conflicts, standard lib mismatches). Include-only keeps the build script simple (`-Ilib`).
+### Prefer Header-Only Libraries
+Avoid linking external `.lib`/`.a` files. Use header-only libraries like:
+- `nlohmann/json`
+- `ankerl::unordered_dense`
 
-### C. No Exceptions (Mostly)
-**Guideline:** Avoid relying on C++ Exceptions crossing the boundary.
-**Reason:** Exception trapping in WASM adds significant overhead. Catch exceptions *inside* your C++ interface functions and return error codes to C#.
+### Avoid Exceptions Crossing Boundaries
+Catch exceptions inside C++ and return error codes to C#.
 
----
-
-## 4. Unity Configuration
-
-### Player Settings
-1.  **Allow 'unsafe' Code**: `Project Settings > Player > Other Settings > Allow 'unsafe' Code`. (REQUIRED for `UnsafeUtility` and pointers).
-2.  **Api Compatibility Level**: `.NET Standard 2.1` (Recommended).
-
-### WebGL Settings
-1.  **Publishing Settings**:
-    *   **Enable Exceptions**: `None` (Best Perf) or `Explicitly Thrown` (Debug). *Full* is too slow.
-    *   **Compression**: `Brotli` or `Gzip`.
-2.  **Plugin Inspector (`.a` file)**:
-    *   Select `build/quantum-rosette.a` in Project view.
-    *   Check **WebGL** platform.
-    *   Uncheck **Any Platform**.
-    *   Ensure "Load on Startup" is checked (usually default).
+### Use Primitive Types Only
+WebGL marshalling fails with complex types. Use: `int`, `float`, `IntPtr`, raw pointers.
 
 ---
 
-## 5. Lessons Learned (Troubleshooting)
+## C# Optimization Attributes
 
-*   **`DlNotFoundException` on WebGL**: You forgot `[DllImport("__Internal")]`.
-*   **`MarshalDirectiveException: System.IntPtr`**: You used a `delegate*` type in a P/Invoke signature. Change argument to `IntPtr`.
-*   **State Resetting / Missing Data**: You assumed `UnityPluginLoad` ran. It didn't. Add `EnsureState()` checks.
-*   **Build Fails (Linker Error)**: You likely used `em++ -r` instead of compile (`-c`) then archive (`emar`). Unity needs a standard static archive `.a`.
+| Attribute | Purpose | When to Use |
+|-----------|---------|-------------|
+| `[SuppressGCTransition]` | Skip GC safe-point check | Fast C++ functions (<1μs) |
+| `[UnmanagedCallersOnly]` | C# method callable from C++ | Reverse callbacks |
+| `IntPtr` | Generic pointer | Instead of `delegate*` in signatures |
+
+---
+
+## Final Checklist
+
+- [ ] Git and Python installed
+- [ ] `tools/emsdk/` cloned and installed
+- [ ] `.emscripten` config file exists (if activation failed)
+- [ ] `build_wasm.bat` produces `.a` without errors
+- [ ] `build.bat` produces `.dll` without errors
+- [ ] Plugins copied to `unity/Assets/Plugins/`
+- [ ] Plugin import settings configured (WebGL for .a, Editor for .dll)
+- [ ] Test script attached to GameObject
+- [ ] Console shows "Test PASSED" in Editor
+- [ ] WebGL build shows "Test PASSED" in browser console

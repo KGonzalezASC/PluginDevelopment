@@ -8,7 +8,7 @@ if %ERRORLEVEL% NEQ 0 (
 if not exist build mkdir build
 
 echo Building blind-fish.dll (x64)...
-cl.exe /std:c++latest /EHsc /LD /Iinclude /Ilib /Fobuild\ /Febuild\blind-fish.dll src\*.cpp
+cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /std:c++latest /EHsc /LD /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo/ /Fobuild\ /Febuild\blind-fish.dll src\*.cpp src\ggpo\*.cpp src\ggpo\backends\*.cpp src\ggpo\network\*.cpp ws2_32.lib winmm.lib user32.lib
 if %ERRORLEVEL% NEQ 0 (
     echo Build failed.
     exit /b 1

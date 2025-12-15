@@ -8,33 +8,27 @@
 #ifndef _STATIC_BUFFER_H
 #define _STATIC_BUFFER_H
 
-#include <types.h>
+#include "types.h"
 
-template<class T, int N> class StaticBuffer
-{
+template <class T, int N> class StaticBuffer {
 public:
-   StaticBuffer<T, N>() :
-      _size(0) {
-   } 
+  StaticBuffer<T, N>() : _size(0) {}
 
-   T& operator[](int i) {
-      ASSERT(i >= 0 && i < _size);
-      return _elements[i];
-   }
+  T &operator[](int i) {
+    ASSERT(i >= 0 && i < _size);
+    return _elements[i];
+  }
 
-   void push_back(const T &t) {
-      ASSERT(_size != (N-1));
-      _elements[_size++] = t;
-   }
+  void push_back(const T &t) {
+    ASSERT(_size != (N - 1));
+    _elements[_size++] = t;
+  }
 
-   int size() {
-      return _size;
-   }
-
+  int size() { return _size; }
 
 protected:
-   T        _elements[N];
-   int      _size;
+  T _elements[N];
+  int _size;
 };
 
 #endif

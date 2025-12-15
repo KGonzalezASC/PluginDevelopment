@@ -3,5 +3,22 @@ CompileFlags:
     - -std=c++20
     - --target=x86_64-pc-windows-msvc
     - -fms-compatibility
-    - -I./lib
-    - -I./include
+    - -fms-extensions
+    - -fno-strict-aliasing
+    - -Ilib
+    - -Iinclude
+    - -Isrc/ggpo/include
+    - -Isrc/ggpo
+    - -Isrc/ggpo/network
+    - -Isrc/ggpo/backends
+    - -D_WINDOWS
+    - -DGGPO_SHARED_LIB
+    - -DGGPO_SDK_EXPORT
+    - -DWIN32
+    - -D_WIN32_WINNT=0x0601
+    - -DWINVER=0x0601
+  Compiler: cl.exe
+
+Diagnostics:
+  Suppress:
+    - pp_file_not_found_angled_include_not_fatal

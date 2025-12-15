@@ -1,0 +1,77 @@
+[
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/main.cpp",
+        "file": "src/ggpo/main.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/network/udp_proto.cpp",
+        "file": "src/ggpo/network/udp_proto.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/network/udp.cpp",
+        "file": "src/ggpo/network/udp.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/bitvector.cpp",
+        "file": "src/ggpo/bitvector.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/game_input.cpp",
+        "file": "src/ggpo/game_input.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/input_queue.cpp",
+        "file": "src/ggpo/input_queue.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/log.cpp",
+        "file": "src/ggpo/log.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/platform_windows.cpp",
+        "file": "src/ggpo/platform_windows.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/poll.cpp",
+        "file": "src/ggpo/poll.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/sync.cpp",
+        "file": "src/ggpo/sync.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/timesync.cpp",
+        "file": "src/ggpo/timesync.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/backends/p2p.cpp",
+        "file": "src/ggpo/backends/p2p.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/backends/spectator.cpp",
+        "file": "src/ggpo/backends/spectator.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/ggpo/backends/synctest.cpp",
+        "file": "src/ggpo/backends/synctest.cpp"
+    },
+    {
+        "directory": "c:/Users/keith/.gemini/antigravity/playground/blind-fish_refactoring_ggpo_branch",
+        "command": "cl.exe /D_WINDOWS /DGGPO_SHARED_LIB /DGGPO_SDK_EXPORT /DWIN32 /std:c++20 /EHsc /Iinclude /Ilib /Isrc/ggpo/include /Isrc/ggpo /Isrc/ggpo/network /Isrc/ggpo/backends /c src/plugin.cpp",
+        "file": "src/plugin.cpp"
+    }
+]

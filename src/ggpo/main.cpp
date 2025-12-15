@@ -119,7 +119,15 @@ GGPO_API GGPOErrorCode __cdecl UggTestStartSession(GGPOSession **ggpo,
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
-  srand(Platform::GetCurrentTimeMS() + Platform::GetProcessID());
+  switch (fdwReason) {
+  case DLL_PROCESS_ATTACH:
+    srand(Platform::GetCurrentTimeMS() + Platform::GetProcessID());
+    ggpo_initialize_winsock();
+    break;
+  case DLL_PROCESS_DETACH:
+    ggpo_deinitialize_winsock();
+    break;
+  }
   return TRUE;
 }
 
